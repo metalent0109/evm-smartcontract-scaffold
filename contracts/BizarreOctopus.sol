@@ -1251,7 +1251,7 @@ library Counters {
 }
 
 
-contract BizzarreOctopus is 
+contract BizarreOctopus is 
     ERC721, 
     Ownable, 
     ReentrancyGuard
@@ -1268,19 +1268,16 @@ contract BizzarreOctopus is
     string public baseExtension = ".json";
     bool public paused = false;
     bool public revealed = false;
-    bool public presaleM = false;
     bool public publicM = false;
     bool public whitelistM = false;
-    uint256 presaleAmountLimit = 4;
-    uint256 maxMintAmount = 4;
+    uint public whitelistCount = 0;
 
     bytes32 public merkleRoot;
     
     mapping(address => uint256) public _presaleClaimed;
     uint256 public _price = 0.036 ether; // 0.01 ETH
-    uint256 public _whitelistPrice = 0.0089 ether; 
+    uint256 public _whitelistPrice = 0.0089999 ether; 
     Counters.Counter private _tokenIds;
-    Counters.Counter private _tokenWhiteListIds;
     
     constructor(string memory uri, address _proxyRegistryAddress)
         ERC721("BizzarreOctopus", "BZR")
@@ -1291,6 +1288,7 @@ contract BizzarreOctopus is
         proxyRegistryAddress = _proxyRegistryAddress;
         setBaseURI(uri);
     }
+
     function setBaseURI(string memory _tokenBaseURI) public onlyOwner {
         baseURI = _tokenBaseURI;
     }
@@ -1298,6 +1296,7 @@ contract BizzarreOctopus is
     function _baseURI() internal view override returns (string memory) {
         return baseURI;
     }
+
     function reveal() public onlyOwner {
         revealed = true;
     }
@@ -1311,7 +1310,7 @@ contract BizzarreOctopus is
         paused = !paused;
     }
 
-    function setPublicPrice(uint _amount) external onlyOwner{
+    function setPrice(uint _amount) external onlyOwner{
         _price = _amount;
     }
 
@@ -1319,15 +1318,27 @@ contract BizzarreOctopus is
         _whitelistPrice = _amount;
     }
 
-    function togglePresale() public onlyOwner {
-        presaleM = !presaleM;
+    
+    function price() public view returns (uint) {
+        return _price;
     }
+    
+    function whitelistPrice() public view returns (uint) {
+        return _whitelistPrice;
+    }
+
     function togglePublicSale() public onlyOwner {
         publicM = !publicM;
+        if (publicM) {
+            whitelistM = false;
+        }
     }
 
     function toggleWhiteListSale() public onlyOwner {
         whitelistM = !whitelistM;
+        if(whitelistM) {
+            publicM = false;
+        }
     }
     
     function withdraw() external onlyOwner {
@@ -1339,19 +1350,18 @@ contract BizzarreOctopus is
     payable
     onlyAccounts
     {
-        require(publicM,                        "Bizzarre Octopus: PublicSale is OFF");
-        require(!paused, "Bizzarre Octopus: Contract is paused");
-        require(_amount > 0, "Bizzarre Octopus: zero amount");
-        require(_amount <= maxMintAmount, "Bizzarre Octopus: Max mint amount is limited to 4");
+        require(publicM,                        "Bizarre Octopus: PublicSale is OFF");
+        require(!paused, "Bizarre Octopus: Contract is paused");
+        require(_amount > 0, "Bizarre Octopus: zero amount");
+        require(balanceOf(msg.sender) == 0, "Bizarre Octopus: already minted");
         uint current = _tokenIds.current();
-        // uint current_whitelist = _tokenWhiteListIds.current();
-        // require(
-        //     current + _amount <= maxSupply - current_whitelist,
-        //     "Bizzarre Octopus: Max supply exceeded"
-        // );
+        require(
+            current + _amount <= maxSupply - whitelistCount,
+            "Bizarre Octopus: Max supply exceeded"
+        );
         require(
             _price * _amount <= msg.value,
-            "Bizzarre Octopus: Not enough ethers sent"
+            "Bizarre Octopus: Not enough ethers sent"
         );
         
         
@@ -1365,22 +1375,22 @@ contract BizzarreOctopus is
     payable
     onlyAccounts
     {
-        require(whitelistM,                        "Bizzarre Octopus: WhiteListSale is OFF");
-        require(!paused, "Bizzarre Octopus: Contract is paused");
-        require(_amount > 0, "Bizzarre Octopus: zero amount");
-        require(_amount <= maxMintAmount, "Bizzarre Octopus: Max mint amount is limited to 4");
-        uint current = _tokenWhiteListIds.current();
+        require(whitelistM,                        "Bizarre Octopus: WhiteListSale is OFF");
+        require(!paused, "Bizarre Octopus: Contract is paused");
+        require(_amount > 0, "Bizarre Octopus: zero amount");
+        require(balanceOf(msg.sender) == 0, "Bizarre Octopus: already minted");
+        uint current = whitelistCount;
         require(
             isWhiteListed(msg.sender, _proof), 
             "Not whitelisted"
         ); 
         require(
             current + _amount <= maxWhiteList,
-            "Bizzarre Octopus: Max whitelist supply exceeded"
+            "Bizarre Octopus: Max whitelist supply exceeded"
         );
         require(
             _whitelistPrice * _amount <= msg.value,
-            "Bizzarre Octopus: Not enough ethers sent"
+            "Bizarre Octopus: Not enough ethers sent"
         );
         
         
@@ -1396,8 +1406,9 @@ contract BizzarreOctopus is
     }
 
     function mintWhiteListInternal() internal nonReentrant {
-        _tokenWhiteListIds.increment();
-        uint256 tokenId = _tokenWhiteListIds.current();
+        whitelistCount++;
+        _tokenIds.increment();
+        uint256 tokenId = _tokenIds.current();
         _safeMint(msg.sender, tokenId);
     }
 
@@ -1440,11 +1451,11 @@ contract BizzarreOctopus is
     function totalPublicSupply() public view returns (uint) {
         return _tokenIds.current();
     }
-    function totalWhiteListSupply() public view returns (uint) {
-        return _tokenWhiteListIds.current();
+    function getBalance(address addr) public view returns (uint) {
+        return balanceOf(addr);
     }
-    function totalSupply() public view returns (uint) {
-        return _tokenWhiteListIds.current() + _tokenIds.current();
+    function totalWhiteListSupply() public view returns (uint) {
+        return whitelistCount;
     }
     /**
      * Override isApprovedForAll to whitelist user's OpenSea proxy accounts to enable gas-less listings.

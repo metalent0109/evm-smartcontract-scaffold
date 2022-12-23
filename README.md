@@ -1,6 +1,8 @@
 # Smart Contract Compile & Deploy
 
 ```
+$npx hardhat clean
+
 $ npx hardhat compile
 
 $ npx hardhat run --network rinkeby ./scripts/0_deploy_contract.js

@@ -3,7 +3,7 @@
 const hre = require("hardhat");
 
 async function main() {
-  const BizzarreOctopus = await hre.ethers.getContractFactory("BizzarreOctopus");
+  const BizzarreOctopus = await hre.ethers.getContractFactory("BizarreOctopus");
   const contract = await BizzarreOctopus.deploy(
     'ipfs://QmfYWWia5mVaAVjGLWVVjBry3j7ZYmNJscLpA4zeM8caQv',
     '0xa5409ec958c83c3f309868babaca7c86dcb077c1'
